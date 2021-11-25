@@ -1,5 +1,7 @@
+use crate::utils::bytecursor::ByteCursor;
+
 #[derive(Debug)]
-enum TYPE {
+pub enum TYPE {
     A,
     AAAA,
     MX,
@@ -10,7 +12,7 @@ enum TYPE {
 }
 
 #[derive(Debug)]
-enum CLASS {
+pub enum CLASS {
     RESERVED,
     IN,
     CH,
@@ -22,9 +24,9 @@ enum CLASS {
 
 #[derive(Debug)]
 pub struct DNSQuestion {
-    _name: String,
-    _type: TYPE,
-    _class: CLASS
+    pub _name: String,
+    pub _type: TYPE,
+    pub _class: CLASS
 }
 
 impl Default for DNSQuestion {
@@ -38,36 +40,31 @@ impl Default for DNSQuestion {
 }
 
 impl DNSQuestion{
-    pub fn new(bytestream: &[u8]) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(bytestream: &mut ByteCursor) -> Result<Self, Box<dyn std::error::Error>> {
         let mut _name = String::new();
-        let mut _i = 0usize; // index for the bytestream
 
-        while bytestream[_i] != 0 {
+        while bytestream.peek_u8().unwrap() != 0 {
             // Read number of bytes from _i. 
-            let mut _readable = bytestream[_i];
-            _i += 1;
+            let mut _readable = bytestream.read_u8().unwrap();
             while _readable > 0 {
-                _name.push(bytestream[_i] as char);
-                _i += 1;
+                _name.push(bytestream.read_u8().unwrap() as char);
                 _readable -= 1;
             }
 
             _name.push('.');
         }
         
-        _name = String::from(_name.strip_suffix('.').unwrap());
+        bytestream.read_u8().unwrap(); // Pop the last character off. (Null termination.)
 
-        _i += 1; // Skip the null termination character. 
+        // _name = String::from(_name.strip_suffix('.').unwrap());
         
-        let _type = match (bytestream[_i] as u16) << 8 | bytestream[_i + 1] as u16 {
+        let _type = match bytestream.read_u16().unwrap() {
             1 => TYPE::A,
             5 => TYPE::NS,
             _ => TYPE::UNKNOWN
         };
         
-        _i += 2;
-
-        let _class = match (bytestream[_i] as u16) << 8 | bytestream[_i + 1] as u16 {
+        let _class = match bytestream.read_u16().unwrap() {
             1 => CLASS::IN,
             _ => CLASS::UNKNOWN
         };

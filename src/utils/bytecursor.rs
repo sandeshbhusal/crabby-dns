@@ -4,8 +4,6 @@
     1. Get next u8
     2. Get next u16
     3. Get next u32
-    4. Get next n-bits as u8 (position does not change)
-    5. Get next n-u8s as &[u8] or Vec<u8>
 */
 
 #[derive(Debug)]
@@ -35,21 +33,30 @@ impl std::fmt::Display for ByteReadError {
 }
 
 impl ByteCursor {
-    fn from_u8(bytestream: &[u8]) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn from_u8(bytestream: &[u8]) -> Self{
         let _len = bytestream.len();
-        Ok(ByteCursor {
+        ByteCursor {
             position: 0,
             length: _len,
             content: Vec::from(bytestream),
-        })
+        }
     }
     
-    fn new() -> ByteCursor {
+    pub fn new() -> ByteCursor {
         ByteCursor::default()
     }
 
-    fn read_u8(&mut self) -> Result<u8, ByteReadError> { 
-        if self.position - 1 == self.length {
+    pub fn peek_u8(&mut self) -> Result<u8, ByteReadError> { 
+        if self.position != 0 && (self.position - 1 == self.length) || self.position == 0 && self.length == 0 {
+            // raise an error
+            return Err(ByteReadError{});
+        }
+        let _ret = self.content[self.position];
+        return Ok(_ret);
+    }
+
+    pub fn read_u8(&mut self) -> Result<u8, ByteReadError> { 
+        if self.position != 0 && (self.position - 1 == self.length) || self.position == 0 && self.length == 0 {
             // raise an error
             return Err(ByteReadError{});
         }
@@ -58,8 +65,9 @@ impl ByteCursor {
         return Ok(_ret);
     }
 
-    fn read_u16(&mut self) -> Result<u16, ByteReadError> { 
-        if self.position - 2 == self.length {
+    pub fn read_u16(&mut self) -> Result<u16, ByteReadError> { 
+        if self.position != 0 && (self.position - 1 == self.length) || self.position == 0 && self.length == 0 {
+            // raise an error
             return Err(ByteReadError{});
         }
         let _u1 = self.content[self.position];
@@ -68,8 +76,9 @@ impl ByteCursor {
         Ok((_u1 as u16) << 8 | (_u2 as u16))
     }
 
-    fn read_u32(&mut self) -> Result<u32, ByteReadError> { 
-        if self.position - 4 == self.length {
+    pub fn read_u32(&mut self) -> Result<u32, ByteReadError> { 
+        if self.position != 0 && (self.position - 1 == self.length) || self.position == 0 && self.length == 0 {
+            // raise an error
             return Err(ByteReadError{});
         }
         let _u1 = self.content[self.position];
@@ -81,7 +90,24 @@ impl ByteCursor {
     }
 }
 
-#[test]
-fn sometest() {
-    assert!(1 == 1);
+impl From<&[u8]> for ByteCursor{
+    fn from(bytestream: &[u8]) -> Self {
+        return ByteCursor::from_u8(bytestream);
+    }
+}
+
+mod tests{
+    use super::*;
+
+    #[test]
+    fn test_bytecursor(){
+        let _bytestream_u8 = [1u8, 1, 2, 3, 4, 5,];
+        let _sliced = &_bytestream_u8[..];
+
+        let mut _testpkg = ByteCursor::from_u8(_sliced);
+        assert!(_testpkg.length == 6);
+
+        assert!(_testpkg.read_u8().unwrap() == 1);
+        assert!(_testpkg.read_u16().unwrap() == (1u16) << 8 | 2u16);
+    }
 }

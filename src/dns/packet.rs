@@ -1,3 +1,5 @@
+use crate::utils::bytecursor::ByteCursor;
+
 use super::{answer::DNSAnswer, header::DNSHeader, question::DNSQuestion};
 
 /*
@@ -5,7 +7,7 @@ use super::{answer::DNSAnswer, header::DNSHeader, question::DNSQuestion};
     Exposes interfaces to directly read and write to byte streams.
 */
 #[derive(Debug)]
-struct DNSPacket {
+pub struct DNSPacket {
     _header: DNSHeader,
     _questions: Vec<DNSQuestion>,
     _answers: Vec<DNSAnswer>
@@ -24,11 +26,20 @@ impl Default for DNSPacket{
 
 impl DNSPacket{
     // Create a DNS packet from a slice of u8
-    fn new(content: &[u8]) -> Result<Self, Box<dyn std::error::Error>>{
-        let _content_vec = Vec::from(content);
-        let mut _passable_iterator = _content_vec.iter();
-        let _header_bytes = _passable_iterator.take(12);
-        // let _header_bytes = _header_bytes.collect::<Vec<u8>>();
+    pub fn new(content: &[u8]) -> Result<Self, Box<dyn std::error::Error>>{
+        let mut bytestream = ByteCursor::from_u8(content);
+        let _header = DNSHeader::new(&mut bytestream).unwrap();
+        // Get N questions from DNS header. 
+        // println!("DNS Header: {:?}", _header);
+        let mut _questions = Vec::new();
+        for i in 0.._header._qdcount {
+            let _question = DNSQuestion::new(&mut bytestream).unwrap();
+            println!("DNS Query received =======");
+            println!("{:?}", _question);
+            _questions.push(_question);
+        }
+        
+        // println!("DNS header read as  {:?} and DNS bytestream as {:?}", _header, bytestream);
         Ok(DNSPacket::default())
     }
 }

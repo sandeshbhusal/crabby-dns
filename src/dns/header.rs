@@ -1,9 +1,11 @@
 use std::{default, io::Cursor};
 
+use crate::utils::bytecursor::ByteCursor;
+
 // See implementation standard at: https://datatracker.ietf.org/doc/html/rfc5395
 // Author: Sandesh Bhusal <mail.sandeshbhusal@gmail.com>
 #[derive(Debug)]
-enum OPCODE {
+pub enum OPCODE {
     QUERY,
     IQUERY,
     STATUS,
@@ -14,7 +16,7 @@ enum OPCODE {
 }
 
 #[derive(Debug)]
-enum RETURNCODE {
+pub enum RETURNCODE {
     NOERR,
     FORMERR,
     SERVFAIL,
@@ -40,19 +42,19 @@ enum RETURNCODE {
 
 #[derive(Debug)]
 pub struct DNSHeader {
-    _id: u16,                   // 16 bit ID of the DNS Packet
-    _qr: bool,                  // Is the packet query or answer
-    _opcode: OPCODE,            // Opcode of the packet
-    _authoritative: bool,       // Is the answer from an authoritative nameserver?
-    _truncated: bool,           // Is the response truncated
-    _recursion_desired: bool,   // Is recursion desired
-    _recursion_available: bool, // Is recursion available in the nameserver
-    _return_code: RETURNCODE,   // Return code from the DNS server
+    pub _id: u16,                   // 16 bit ID of the DNS Packet
+    pub _qr: bool,                  // Is the packet query or answer
+    pub _opcode: OPCODE,            // Opcode of the packet
+    pub _authoritative: bool,       // Is the answer from an authoritative nameserver?
+    pub _truncated: bool,           // Is the response truncated
+    pub _recursion_desired: bool,   // Is recursion desired
+    pub _recursion_available: bool, // Is recursion available in the nameserver
+    pub _return_code: RETURNCODE,   // Return code from the DNS server
 
-    _qdcount: u16, // Number of questions
-    _ancount: u16, // Number of answers
-    _nscount: u16, // Number of nameserver resource records
-    _arcount: u16, // Number of additional records
+    pub _qdcount: u16, // Number of questions
+    pub _ancount: u16, // Number of answers
+    pub _nscount: u16, // Number of nameserver resource records
+    pub _arcount: u16, // Number of additional records
 }
 
 impl Default for DNSHeader {
@@ -77,20 +79,19 @@ impl Default for DNSHeader {
 
 
 impl DNSHeader {
-    pub fn new(bytestream: &[u8]) -> Result<Self, Box<dyn std::error::Error>> {
-        let _vec = Vec::from(bytestream);
+    pub fn new(bytestream: &mut ByteCursor) -> Result<Self, Box<dyn std::error::Error>> {
         // extract id
-        let _id = (_vec[0] as u16) << 8 | (_vec[1] as u16);
-        let _qr = _vec[2] & 0b1000_0000 == 1;
-        let _opcode = match _vec[2] & 0b0111_1000 {
+        let _id = bytestream.read_u16().unwrap();
+        let _qr = bytestream.peek_u8().unwrap() & 0b1000_0000 == 1;
+        let _opcode = match bytestream.peek_u8().unwrap() & 0b0111_1000 {
             0 => OPCODE::QUERY,
             _ => OPCODE::UNKNOWN,
         };
-        let _authoritative = _vec[2] & 0b0000_0100 == 1;
-        let _truncated = _vec[2] & 0b0000_0010 == 1;
-        let _recursion_desired = _vec[2] & 0b0000_0001 == 1;
-        let _recursion_available = _vec[3] & 0b1000_0000 == 1;
-        let _return_code = match _vec[3] & 0b0000_1111 {
+        let _authoritative = bytestream.peek_u8().unwrap() & 0b0000_0100 == 1;
+        let _truncated = bytestream.peek_u8().unwrap() & 0b0000_0010 == 1;
+        let _recursion_desired = bytestream.read_u8().unwrap() & 0b0000_0001 == 1;
+        let _recursion_available = bytestream.peek_u8().unwrap() & 0b1000_0000 == 1;
+        let _return_code = match bytestream.read_u8().unwrap() & 0b0000_1111 {
             0 => RETURNCODE::NOERR,
             1 => RETURNCODE::FORMERR,
             2 => RETURNCODE::SERVFAIL,
@@ -101,10 +102,10 @@ impl DNSHeader {
             _ => RETURNCODE::UNKNOWN,
         };
 
-        let _qdcount = (_vec[4] as u16) << 8 | _vec[5] as u16;
-        let _ancount = (_vec[6] as u16) << 8 | _vec[7] as u16;
-        let _nscount = (_vec[8] as u16) << 8 | _vec[9] as u16;
-        let _arcount = (_vec[10] as u16) << 8 | _vec[11] as u16;
+        let _qdcount = bytestream.read_u16().unwrap();
+        let _ancount = bytestream.read_u16().unwrap();
+        let _nscount = bytestream.read_u16().unwrap();
+        let _arcount = bytestream.read_u16().unwrap();
 
         Ok(DNSHeader {
             _id,
