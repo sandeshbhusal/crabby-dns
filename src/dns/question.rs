@@ -54,6 +54,8 @@ impl DNSQuestion{
 
             _name.push('.');
         }
+        
+        _name = String::from(_name.strip_suffix('.').unwrap());
 
         _i += 1; // Skip the null termination character. 
         

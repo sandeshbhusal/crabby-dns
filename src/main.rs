@@ -1,4 +1,5 @@
 mod dns;
+mod utils;
 use dns::header::DNSHeader;
 
 use crate::dns::question::DNSQuestion;
