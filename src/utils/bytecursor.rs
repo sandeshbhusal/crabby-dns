@@ -1,7 +1,7 @@
 /*
     Implementation of a byte cursor object.
     Takes in &[u8] and returns a byte cursor. It supports the given operations:
-    1. Get next u8
+    1. Get next u8 (peek or get)
     2. Get next u16
     3. Get next u32
 */
@@ -47,67 +47,53 @@ impl ByteCursor {
     }
 
     pub fn peek_u8(&mut self) -> Result<u8, ByteReadError> { 
-        if self.position != 0 && (self.position - 1 == self.length) || self.position == 0 && self.length == 0 {
-            // raise an error
+        // peek_u8 returns the u8 value at current "position". Position guaranteed to be within bounds. 
+        if self.length == 0 {
             return Err(ByteReadError{});
         }
-        let _ret = self.content[self.position];
-        return Ok(_ret);
+        Ok(self.content[self.position])
     }
 
     pub fn read_u8(&mut self) -> Result<u8, ByteReadError> { 
-        if self.position != 0 && (self.position - 1 == self.length) || self.position == 0 && self.length == 0 {
-            // raise an error
+        let _byte = self.peek_u8()?;
+        if self.position == self.length - 1 {
+            // Out of bytes. 
             return Err(ByteReadError{});
         }
-        let _ret = self.content[self.position];
         self.position += 1;
-        return Ok(_ret);
+        Ok(_byte)
     }
 
     pub fn read_u16(&mut self) -> Result<u16, ByteReadError> { 
-        if self.position != 0 && (self.position - 1 == self.length) || self.position == 0 && self.length == 0 {
-            // raise an error
-            return Err(ByteReadError{});
-        }
-        let _u1 = self.content[self.position];
-        let _u2 = self.content[self.position + 1];
-        self.position += 2;
-        Ok((_u1 as u16) << 8 | (_u2 as u16))
+        let _byte1 = self.read_u8()?;
+        let _byte2 = self.read_u8()?;
+
+        Ok((_byte1 as u16) << 8 | _byte2 as u16)
     }
 
     pub fn read_u32(&mut self) -> Result<u32, ByteReadError> { 
-        if self.position != 0 && (self.position - 1 == self.length) || self.position == 0 && self.length == 0 {
+        let _double1 = self.read_u16()?;
+        let _double2 = self.read_u16()?;
+
+        Ok((_double1 as u32) << 16 | _double2 as u32)
+    }
+
+    pub fn goto_offset(&mut self, offset: usize) -> Result<(), ByteReadError> {
+        if offset < 0 || offset > self.length - 1 {
             // raise an error
             return Err(ByteReadError{});
         }
-        let _u1 = self.content[self.position];
-        let _u2 = self.content[self.position + 1];
-        let _u3 = self.content[self.position + 2];
-        let _u4 = self.content[self.position + 3];
-        self.position += 4;
-        Ok((_u1 as u32) << 24 | (_u2 as u32) << 16 | (_u3 as u32) << 8 | _u4 as u32)
+        self.position = offset;
+        Ok(())
+    }
+
+    pub fn rewind(&mut self) {
+        self.position = 0;
     }
 }
 
 impl From<&[u8]> for ByteCursor{
     fn from(bytestream: &[u8]) -> Self {
         return ByteCursor::from_u8(bytestream);
-    }
-}
-
-mod tests{
-    use super::*;
-
-    #[test]
-    fn test_bytecursor(){
-        let _bytestream_u8 = [1u8, 1, 2, 3, 4, 5,];
-        let _sliced = &_bytestream_u8[..];
-
-        let mut _testpkg = ByteCursor::from_u8(_sliced);
-        assert!(_testpkg.length == 6);
-
-        assert!(_testpkg.read_u8().unwrap() == 1);
-        assert!(_testpkg.read_u16().unwrap() == (1u16) << 8 | 2u16);
     }
 }

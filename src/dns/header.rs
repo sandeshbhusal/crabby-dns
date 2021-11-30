@@ -1,18 +1,12 @@
-use std::{default, io::Cursor};
-
 use crate::utils::bytecursor::ByteCursor;
 
 // See implementation standard at: https://datatracker.ietf.org/doc/html/rfc5395
 // Author: Sandesh Bhusal <mail.sandeshbhusal@gmail.com>
+
 #[derive(Debug)]
 pub enum OPCODE {
     QUERY,
-    IQUERY,
-    STATUS,
-    NOTIFY,
-    UPDATE,
-
-    UNKNOWN,
+    UNKNOWN
 }
 
 #[derive(Debug)]
@@ -23,20 +17,6 @@ pub enum RETURNCODE {
     NXDOMAIN,
     NOTIMP,
     REFUSED,
-    YXDOMAIN,
-    YRRSET,
-    NXRRSET,
-    NOTAUTH,
-    NOTZONE,
-    BADVERS,
-    BADSIG,
-    BADKEY,
-    BADTIME,
-    BADMODE,
-    BADNAME,
-    BADALG,
-    BADTRUNC,
-
     UNKNOWN,
 }
 
@@ -79,33 +59,33 @@ impl Default for DNSHeader {
 
 
 impl DNSHeader {
-    pub fn new(bytestream: &mut ByteCursor) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(cursor: &mut ByteCursor) -> Result<Self, Box<dyn std::error::Error>> {
         // extract id
-        let _id = bytestream.read_u16().unwrap();
-        let _qr = bytestream.peek_u8().unwrap() & 0b1000_0000 == 1;
-        let _opcode = match bytestream.peek_u8().unwrap() & 0b0111_1000 {
+        let _id = cursor.read_u16().unwrap();
+        let _qr = cursor.peek_u8().unwrap() & 0b1000_0000 == 1;
+        let _opcode = match cursor.peek_u8().unwrap() & 0b0111_1000 {
             0 => OPCODE::QUERY,
             _ => OPCODE::UNKNOWN,
         };
-        let _authoritative = bytestream.peek_u8().unwrap() & 0b0000_0100 == 1;
-        let _truncated = bytestream.peek_u8().unwrap() & 0b0000_0010 == 1;
-        let _recursion_desired = bytestream.read_u8().unwrap() & 0b0000_0001 == 1;
-        let _recursion_available = bytestream.peek_u8().unwrap() & 0b1000_0000 == 1;
-        let _return_code = match bytestream.read_u8().unwrap() & 0b0000_1111 {
+        let _authoritative = cursor.peek_u8().unwrap() & 0b0000_0100 == 1;
+        let _truncated = cursor.peek_u8().unwrap() & 0b0000_0010 == 1;
+        let _recursion_desired = cursor.read_u8().unwrap() & 0b0000_0001 == 1;
+        let _recursion_available = cursor.peek_u8().unwrap() & 0b1000_0000 == 1;
+        
+        let _return_code = match cursor.read_u8().unwrap() & 0b0000_1111 {
             0 => RETURNCODE::NOERR,
             1 => RETURNCODE::FORMERR,
             2 => RETURNCODE::SERVFAIL,
             3 => RETURNCODE::NXDOMAIN,
             4 => RETURNCODE::NOTIMP,
             5 => RETURNCODE::REFUSED,
-
             _ => RETURNCODE::UNKNOWN,
         };
 
-        let _qdcount = bytestream.read_u16().unwrap();
-        let _ancount = bytestream.read_u16().unwrap();
-        let _nscount = bytestream.read_u16().unwrap();
-        let _arcount = bytestream.read_u16().unwrap();
+        let _qdcount = cursor.read_u16().unwrap();
+        let _ancount = cursor.read_u16().unwrap();
+        let _nscount = cursor.read_u16().unwrap();
+        let _arcount = cursor.read_u16().unwrap();
 
         Ok(DNSHeader {
             _id,
